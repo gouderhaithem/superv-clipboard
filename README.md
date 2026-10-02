@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/icon/icon-128.png" alt="" width="96">
+
 # Super V Clipboard
 
 **Windows-style clipboard history for GNOME. Press <kbd>Super</kbd>+<kbd>V</kbd>, pick what you copied earlier, and it gets pasted.**
