@@ -1,3 +1,4 @@
+import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import St from 'gi://St';
 
@@ -51,8 +52,11 @@ export class ClipboardMonitor {
         if (!imageMime || !this._wantImages())
             return;
         clipboard.get_content(CLIPBOARD, imageMime, (_clip, bytes) => {
-            if (bytes && bytes.get_size() > 0)
-                this._onImage(bytes, imageMime);
+            if (!bytes || bytes.get_size() === 0)
+                return;
+            // `bytes` is only valid during this callback (GNOME frees it right
+            // after), so keep our own copy. Holding the original crashes the shell.
+            this._onImage(new GLib.Bytes(bytes.toArray()), imageMime);
         });
     }
 }

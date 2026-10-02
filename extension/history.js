@@ -1,6 +1,8 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
+import {makeThumbnail} from './thumbnail.js';
+
 const MAX_TEXT_CHARS = 1024 * 1024;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
@@ -44,7 +46,10 @@ export class History {
         const size = bytes?.get_size() ?? 0;
         if (size === 0 || size > MAX_IMAGE_BYTES)
             return;
-        this._add({kind: 'image', bytes, mime, key: imageKey(bytes)});
+        const thumb = makeThumbnail(bytes);
+        if (!thumb)
+            return;
+        this._add({kind: 'image', bytes, mime, thumb, key: imageKey(bytes)});
     }
 
     togglePin(id) {
@@ -145,7 +150,8 @@ export class History {
         if (record?.kind === 'image' && typeof record.data === 'string') {
             const bytes = new GLib.Bytes(GLib.base64_decode(record.data));
             const mime = typeof record.mime === 'string' ? record.mime : 'image/png';
-            return {...base, kind: 'image', bytes, mime, key: imageKey(bytes)};
+            const thumb = makeThumbnail(bytes);
+            return thumb ? {...base, kind: 'image', bytes, mime, thumb, key: imageKey(bytes)} : null;
         }
         return null;
     }

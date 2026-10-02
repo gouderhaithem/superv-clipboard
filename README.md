@@ -102,6 +102,7 @@ extension/
 ├── paster.js      # puts an item on the clipboard and sends the paste keys
 ├── popup.js       # the Super+V panel
 ├── format.js      # previews and "5 min ago" labels
+├── thumbnail.js   # decodes image previews on the main thread
 ├── prefs.js       # settings window (libadwaita)
 ├── stylesheet.css
 └── schemas/
@@ -110,8 +111,11 @@ extension/
 Run the tests:
 
 ```bash
-gjs -m tests/history.test.js
+gjs -m tests/history.test.js                   # unit tests (history, expiry, thumbnails)
+dbus-run-session -- tests/shell-smoke.sh       # loads the extension in a throwaway headless GNOME Shell
 ```
+
+`shell-smoke.sh` copies images and text from a real Wayland client (`wl-copy`), opens the panel repeatedly, pastes an image back, and checks that GNOME Shell never crashes. It runs fully isolated from your desktop. It needs `wl-clipboard` and `python3-pil`.
 
 You can try changes without logging out by running a GNOME Shell in a window:
 

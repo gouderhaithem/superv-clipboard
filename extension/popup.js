@@ -1,5 +1,5 @@
 import Clutter from 'gi://Clutter';
-import Gio from 'gi://Gio';
+import Cogl from 'gi://Cogl';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -199,9 +199,19 @@ export class ClipboardPopup {
     }
 
     _buildThumb(item) {
-        return new St.Icon({
-            gicon: Gio.BytesIcon.new(item.bytes),
-            icon_size: THUMB_SIZE,
+        // Drawn from our own pre-decoded pixels on the main thread, the same way
+        // GNOME Shell shows screenshot previews.
+        const {pixels, width, height, rowstride} = item.thumb;
+        const content = St.ImageContent.new_with_preferred_size(width, height);
+        content.set_bytes(pixels, Cogl.PixelFormat.RGBA_8888, width, height, rowstride);
+
+        const scaleFactor = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        const fit = Math.min(1, (THUMB_SIZE * scaleFactor) / Math.max(width, height));
+        return new St.Widget({
+            content,
+            content_gravity: Clutter.ContentGravity.RESIZE_ASPECT,
+            width: Math.round(width * fit),
+            height: Math.round(height * fit),
             style_class: 'cbh-thumb',
             x_align: Clutter.ActorAlign.START,
         });

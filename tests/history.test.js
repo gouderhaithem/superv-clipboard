@@ -1,4 +1,5 @@
 import GLib from 'gi://GLib';
+import GdkPixbuf from 'gi://GdkPixbuf';
 import System from 'system';
 import {History} from '../extension/history.js';
 import {previewOf, metaText} from '../extension/format.js';
@@ -24,14 +25,29 @@ h.prune();
 eq('expiry removes old unpinned only', h.items.map(i => i.text), ['f', 'e', 'c']);
 h.clear();
 eq('clear keeps pinned', h.items.map(i => i.text), ['c']);
-const img = new GLib.Bytes(new Uint8Array([137, 80, 78, 71, 1, 2, 3]));
+const makePng = (w, h, rgba) => {
+    const pb = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, true, 8, w, h);
+    pb.fill(rgba);
+    const [, buf] = pb.save_to_bufferv('png', [], []);
+    return new GLib.Bytes(buf);
+};
+const img = makePng(1200, 600, 0x3366ccff);
+h.addImage(new GLib.Bytes(new Uint8Array([137, 80, 78, 71, 1, 2, 3])), 'image/png');
+eq('undecodable image rejected', h.items.filter(i => i.kind === 'image').length, 0);
 h.addImage(img, 'image/png'); h.addImage(img, 'image/png');
 eq('image dedupe', h.items.filter(i => i.kind === 'image').length, 1);
+const thumb = h.items.find(i => i.kind === 'image').thumb;
+eq('thumbnail scaled to fit 256px, aspect kept', [thumb.width, thumb.height], [256, 128]);
+eq('thumbnail pixels are RGBA', thumb.pixels.get_size() >= thumb.rowstride * (thumb.height - 1) + thumb.width * 4, true);
+h.addImage(makePng(40, 30, 0xff0000ff), 'image/png');
+eq('small image not upscaled', [h.items[0].thumb.width, h.items[0].thumb.height], [40, 30]);
+h.remove(h.items[0].id);
 h.togglePin(h.items[0].id);
 
 const h2 = new History(s); h2.load();
 eq('pinned persisted + reloaded', h2.items.map(i => i.kind).sort(), ['image', 'text']);
-eq('reloaded image bytes intact', h2.items.find(i => i.kind === 'image').bytes.toArray().length, 7);
+eq('reloaded image bytes intact', h2.items.find(i => i.kind === 'image').bytes.get_size(), img.get_size());
+eq('reloaded image has thumbnail', h2.items.find(i => i.kind === 'image').thumb.width, 256);
 const info = GLib.file_test(`${tmp}/superv-clipboard/pinned.json`, GLib.FileTest.EXISTS);
 eq('file exists', info, true);
 h2.items.forEach(i => h2.togglePin(i.id));
