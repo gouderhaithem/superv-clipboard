@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.superv-clipboard"
+          path="/org/gnome/shell/extensions/superv-clipboard/">
+    <key name="toggle-shortcut" type="as">
+      <default>['&lt;Super&gt;v']</default>
+      <summary>Shortcut that opens the clipboard history</summary>
+    </key>
+    <key name="expiry-minutes" type="i">
+      <default>30</default>
+      <range min="0" max="1440"/>
+      <summary>Delete unpinned items after this many minutes (0 = never)</summary>
+    </key>
+    <key name="max-items" type="i">
+      <default>25</default>
+      <range min="5" max="200"/>
+      <summary>Maximum number of unpinned items kept</summary>
+    </key>
+    <key name="store-images" type="b">
+      <default>true</default>
+      <summary>Keep copied images in the history</summary>
+    </key>
+    <key name="persist-pinned" type="b">
+      <default>true</default>
+      <summary>Save pinned items to disk so they survive a reboot</summary>
+    </key>
+  </schema>
+</schemalist>

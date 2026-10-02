@@ -1,0 +1,60 @@
+/* Windows 11 clipboard look (dark). */
+.cbh-panel {
+  width: 460px;
+  padding: 14px;
+  spacing: 10px;
+  color: #ffffff;
+  background-color: rgba(32, 32, 32, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+
+.cbh-header { spacing: 6px; padding: 0 2px 2px 4px; }
+.cbh-title { font-size: 12pt; font-weight: 600; }
+
+.cbh-clear {
+  font-size: 9pt;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: #60cdff;
+}
+.cbh-clear:hover { background-color: rgba(255, 255, 255, 0.08); }
+.cbh-clear:active { background-color: rgba(255, 255, 255, 0.04); }
+
+.cbh-scroll { max-height: 540px; }
+.cbh-list { spacing: 8px; }
+
+.cbh-item {
+  padding: 12px 8px 12px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background-color: rgba(255, 255, 255, 0.06);
+  transition-duration: 100ms;
+}
+.cbh-item:hover { background-color: rgba(255, 255, 255, 0.1); }
+.cbh-item:active { background-color: rgba(255, 255, 255, 0.04); }
+.cbh-item:focus {
+  border-color: #60cdff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.cbh-text { font-size: 11pt; color: #f3f3f3; }
+.cbh-meta { font-size: 9pt; padding-top: 6px; color: rgba(255, 255, 255, 0.55); }
+.cbh-thumb { border-radius: 4px; }
+
+.cbh-actions { spacing: 2px; padding-left: 6px; }
+.cbh-icon-btn {
+  padding: 5px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.cbh-icon-btn:hover { color: #ffffff; background-color: rgba(255, 255, 255, 0.12); }
+.cbh-icon-btn.cbh-active { color: #60cdff; }
+.cbh-icon { icon-size: 16px; }
+
+.cbh-empty { padding: 28px 12px; spacing: 4px; }
+.cbh-empty-title { font-size: 10pt; font-weight: 600; text-align: center; }
+.cbh-empty-text { font-size: 9pt; text-align: center; color: rgba(255, 255, 255, 0.6); }
+
+.cbh-footer { font-size: 9pt; padding: 2px 4px 0; color: rgba(255, 255, 255, 0.45); }

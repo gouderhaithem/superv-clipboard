@@ -1,0 +1,10 @@
+{
+  "uuid": "superv-clipboard@gouderhaithem.github.io",
+  "name": "Super V Clipboard",
+  "description": "Windows-style clipboard history for GNOME. Press Super+V to see what you copied, click to paste. Unpinned items are deleted automatically after a time you choose.",
+  "shell-version": ["46"],
+  "session-modes": ["user", "unlock-dialog"],
+  "settings-schema": "org.gnome.shell.extensions.superv-clipboard",
+  "url": "https://github.com/gouderhaithem/superv-clipboard",
+  "version": 1
+}

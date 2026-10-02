@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GJS and GLib tools
+        run: sudo apt-get update && sudo apt-get install -y gjs libglib2.0-bin
+      - name: Validate settings schema
+        run: glib-compile-schemas --strict --dry-run extension/schemas
+      - name: Syntax check
+        run: for f in extension/*.js; do node --check --input-type=module < "$f"; done
+      - name: Unit tests
+        run: gjs -m tests/history.test.js
