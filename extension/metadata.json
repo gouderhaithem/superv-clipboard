@@ -1,10 +1,15 @@
 {
   "uuid": "superv-clipboard@gouderhaithem.github.io",
   "name": "Super V Clipboard",
-  "description": "Windows-style clipboard history for GNOME. Press Super+V to see what you copied, click to paste. Unpinned items are deleted automatically after a time you choose.",
-  "shell-version": ["46"],
-  "session-modes": ["user", "unlock-dialog"],
+  "description": "Windows-style clipboard history for GNOME. Press Super+V to see what you copied and click an item to paste it. Unpinned items are deleted automatically after a time you choose (30 minutes by default); pinned items are kept.\n\nClipboard access: this extension reads the clipboard to build the history. The history stays in memory on your computer and is never sent anywhere. Only pinned items are saved to disk (~/.local/share/superv-clipboard, readable only by you). Copies marked secret by password managers are skipped, and nothing is recorded while the screen is locked.",
+  "shell-version": [
+    "46"
+  ],
+  "session-modes": [
+    "user",
+    "unlock-dialog"
+  ],
   "settings-schema": "org.gnome.shell.extensions.superv-clipboard",
   "url": "https://github.com/gouderhaithem/superv-clipboard",
-  "version": 1
+  "version-name": "1.0"
 }

@@ -15,9 +15,11 @@ export class ClipboardMonitor {
         this._wantImages = wantImages;
         this._selection = null;
         this._ownerChangedId = 0;
+        this._running = false;
     }
 
     start() {
+        this._running = true;
         this._selection = global.display.get_selection();
         this._ownerChangedId = this._selection.connect('owner-changed', (_sel, type, source) => {
             if (type === Meta.SelectionType.SELECTION_CLIPBOARD && source)
@@ -26,6 +28,8 @@ export class ClipboardMonitor {
     }
 
     stop() {
+        // Clipboard reads already in flight check this and drop their result.
+        this._running = false;
         if (this._selection && this._ownerChangedId)
             this._selection.disconnect(this._ownerChangedId);
         this._selection = null;
@@ -40,7 +44,7 @@ export class ClipboardMonitor {
 
         if (mimes.some(m => TEXT_MIMES.includes(m))) {
             clipboard.get_text(CLIPBOARD, (_clip, text) => {
-                if (text)
+                if (this._running && text)
                     this._onText(text);
             });
             return;
@@ -52,7 +56,7 @@ export class ClipboardMonitor {
         if (!imageMime || !this._wantImages())
             return;
         clipboard.get_content(CLIPBOARD, imageMime, (_clip, bytes) => {
-            if (!bytes || bytes.get_size() === 0)
+            if (!this._running || !bytes || bytes.get_size() === 0)
                 return;
             // `bytes` is only valid during this callback (GNOME frees it right
             // after), so keep our own copy. Holding the original crashes the shell.

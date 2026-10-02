@@ -5,6 +5,7 @@
 # dir, private D-Bus, in-memory settings.
 #
 # Usage: dbus-run-session -- tests/shell-smoke.sh
+#        SMOKE_ZIP=dist/<uuid>.shell-extension.zip dbus-run-session -- tests/shell-smoke.sh
 # Needs: gnome-shell (46), wl-clipboard, python3-pil (to make test images).
 set -uo pipefail
 
@@ -17,8 +18,14 @@ export XDG_DATA_HOME="$WORK/data"
 EXT_DIR="$XDG_DATA_HOME/gnome-shell/extensions/$UUID"
 mkdir -p "$EXT_DIR/schemas"
 SRC="$(cd "$(dirname "$0")/../extension" && pwd)"
-cp "$SRC"/*.js "$SRC"/metadata.json "$SRC"/stylesheet.css "$EXT_DIR/"
-cp "$SRC"/schemas/*.gschema.xml "$EXT_DIR/schemas/" && glib-compile-schemas "$EXT_DIR/schemas"
+if [[ -n "${SMOKE_ZIP:-}" ]]; then
+    # Test the exact package that gets uploaded (./pack.sh output).
+    unzip -q "$SMOKE_ZIP" -d "$EXT_DIR"
+    [[ -f "$EXT_DIR/schemas/gschemas.compiled" ]] || glib-compile-schemas "$EXT_DIR/schemas"
+else
+    cp "$SRC"/*.js "$SRC"/metadata.json "$SRC"/stylesheet.css "$EXT_DIR/"
+    cp "$SRC"/schemas/*.gschema.xml "$EXT_DIR/schemas/" && glib-compile-schemas "$EXT_DIR/schemas"
+fi
 unset WAYLAND_DISPLAY DISPLAY XDG_SESSION_ID
 
 python3 - "$WORK" <<'PY'
@@ -56,5 +63,13 @@ WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/wayland-0" timeout 5 wl-paste --type image/png
 ev "imports.system.gc(); const h = $EXT._history; h.togglePin(h.items.find(i => i.mime === 'image/jpeg').id); 'pinned'" >/dev/null || fail "pin/save image"
 kill -0 "$SHELL_PID" 2>/dev/null || fail "GNOME Shell crashed"
 grep -qE "crashed|ref_count" "$WORK/shell.log" && fail "crash markers in log"
+sleep 1  # saves are debounced
+# Turn off while a new image is still decoding, then back on: no crash, pinned image reloads.
+python3 -c "from PIL import Image; Image.new('RGB', (3000, 2000), (10, 160, 90)).save('$WORK/c.png')"
+pkill -x wl-copy 2>/dev/null; WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/wayland-0" wl-copy --type image/png < "$WORK/c.png"
+ev "const e = Main.extensionManager.lookup('$UUID').stateObj; e.disable(); e.enable(); imports.system.gc(); 'cycled'" >/dev/null || fail "disable/enable during decode"
+sleep 2
+reloaded="$(ev "$EXT._history.items.map(i => (i.pinned ? 'pinned:' : '') + (i.mime || 'text')).join(',')")"
+[[ "$reloaded" == *"pinned:image/jpeg"* ]] || fail "pinned image not reloaded after enable: $reloaded"
 test -s "$XDG_DATA_HOME/superv-clipboard/pinned.json" || fail "pinned image was not saved"
-echo "PASS: images and text from a real client, 20 panel cycles, image paste-back, pin+save, no crash"
+echo "PASS: images and text from a real client, 20 panel cycles, image paste-back, pin+save, disable during decode, reload, no crash"

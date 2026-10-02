@@ -1,10 +1,13 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
+import {PinnedStore} from './storage.js';
 import {makeThumbnail} from './thumbnail.js';
 
 const MAX_TEXT_CHARS = 1024 * 1024;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_PINNED_ITEMS = 50;
+const MAX_PINNED_BYTES = 32 * 1024 * 1024;
 
 /**
  * In-memory clipboard history (newest first). Unpinned items expire and are
@@ -17,9 +20,8 @@ export class History {
         this._nextId = 1;
         this._listeners = new Map();
         this._nextListenerId = 1;
-        this._file = Gio.File.new_for_path(GLib.build_filenamev([
-            GLib.get_user_data_dir(), 'superv-clipboard', 'pinned.json',
-        ]));
+        this._cancellable = new Gio.Cancellable();
+        this._store = new PinnedStore();
     }
 
     get items() {
@@ -42,17 +44,31 @@ export class History {
         this._add({kind: 'text', text, key: `t:${text}`});
     }
 
-    addImage(bytes, mime) {
+    /** Resolves once the image is in the history (or was rejected). */
+    async addImage(bytes, mime) {
         const size = bytes?.get_size() ?? 0;
         if (size === 0 || size > MAX_IMAGE_BYTES)
             return;
-        const thumb = makeThumbnail(bytes);
-        if (!thumb)
+        const key = imageKey(bytes);
+        // Already known (e.g. we just pasted it): just move it to the top, no re-decode.
+        if (this._items.some(i => i.key === key)) {
+            this._add({key});
             return;
-        this._add({kind: 'image', bytes, mime, thumb, key: imageKey(bytes)});
+        }
+        const thumb = await makeThumbnail(bytes, this._cancellable);
+        if (thumb && !this._cancellable.is_cancelled())
+            this._add({kind: 'image', bytes, mime, thumb, key});
     }
 
+    /** Returns false when pinning would exceed the pinned-items limits. */
     togglePin(id) {
+        const target = this._items.find(i => i.id === id);
+        if (!target)
+            return false;
+        if (!target.pinned && !this._canPin(target)) {
+            console.warn('Super V Clipboard: pinned items limit reached');
+            return false;
+        }
         const now = Date.now();
         // Unpinning restarts the expiry clock so the item doesn't vanish instantly.
         const items = this._items.map(i => i.id === id
@@ -61,6 +77,7 @@ export class History {
         this._items = this._trim(items);
         this._save();
         this._emit();
+        return true;
     }
 
     remove(id) {
@@ -91,33 +108,44 @@ export class History {
         }
     }
 
-    load() {
+    /** Loads saved pinned items in the background. */
+    async load() {
         if (!this._settings.get_boolean('persist-pinned'))
             return;
-        let contents;
-        try {
-            [, contents] = this._file.load_contents(null);
-        } catch (e) {
-            if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))
-                console.error(`Super V Clipboard: cannot read pinned items: ${e.message}`);
+        const records = await this._store.load(this._cancellable);
+        const loaded = await Promise.all(records.slice(0, MAX_PINNED_ITEMS).map(r => this._fromRecord(r)));
+        if (this._cancellable.is_cancelled())
             return;
-        }
-        try {
-            const records = JSON.parse(new TextDecoder().decode(contents));
-            if (Array.isArray(records))
-                this._items = records.map(r => this._fromRecord(r)).filter(Boolean);
-        } catch (e) {
-            console.error(`Super V Clipboard: pinned items file is corrupt: ${e.message}`);
+        const known = new Set(this._items.map(i => i.key));
+        const fresh = loaded.filter(i => i && !known.has(i.key));
+        if (fresh.length > 0) {
+            this._items = [...this._items, ...fresh];
+            this._emit();
         }
     }
 
+    /** Writes any pending save right away. */
+    flush() {
+        this._store.flush();
+    }
+
     destroy() {
+        this._cancellable.cancel();
+        this._store.flush();
         this._listeners.clear();
         this._items = [];
     }
 
+    _canPin(item) {
+        const pinned = this._items.filter(i => i.pinned);
+        const bytes = [...pinned, item].reduce((sum, i) => sum + (i.bytes?.get_size() ?? i.text.length), 0);
+        return pinned.length < MAX_PINNED_ITEMS && bytes <= MAX_PINNED_BYTES;
+    }
+
     _add(entry) {
         const existing = this._items.find(i => i.key === entry.key);
+        if (!existing && !entry.kind)
+            return;
         const item = existing
             ? {...existing, time: Date.now()}
             : {...entry, id: this._nextId++, time: Date.now(), pinned: false};
@@ -142,18 +170,22 @@ export class History {
         }
     }
 
-    _fromRecord(record) {
+    async _fromRecord(record) {
         const time = Number.isFinite(record?.time) ? record.time : Date.now();
-        const base = {id: this._nextId++, time, pinned: true};
-        if (record?.kind === 'text' && typeof record.text === 'string')
-            return {...base, kind: 'text', text: record.text, key: `t:${record.text}`};
-        if (record?.kind === 'image' && typeof record.data === 'string') {
-            const bytes = new GLib.Bytes(GLib.base64_decode(record.data));
-            const mime = typeof record.mime === 'string' ? record.mime : 'image/png';
-            const thumb = makeThumbnail(bytes);
-            return thumb ? {...base, kind: 'image', bytes, mime, thumb, key: imageKey(bytes)} : null;
-        }
-        return null;
+        const base = {time, pinned: true};
+        if (record?.kind === 'text' && typeof record.text === 'string' && record.text.length <= MAX_TEXT_CHARS)
+            return {...base, id: this._nextId++, kind: 'text', text: record.text, key: `t:${record.text}`};
+        if (record?.kind !== 'image' || typeof record.data !== 'string')
+            return null;
+
+        const bytes = new GLib.Bytes(GLib.base64_decode(record.data));
+        if (bytes.get_size() === 0 || bytes.get_size() > MAX_IMAGE_BYTES)
+            return null;
+        const thumb = await makeThumbnail(bytes, this._cancellable);
+        if (!thumb)
+            return null;
+        const mime = typeof record.mime === 'string' ? record.mime : 'image/png';
+        return {...base, id: this._nextId++, kind: 'image', bytes, mime, thumb, key: imageKey(bytes)};
     }
 
     _toRecord(item) {
@@ -168,40 +200,14 @@ export class History {
     }
 
     _save() {
-        const pinned = this._items.filter(i => i.pinned);
-        try {
-            if (!this._settings.get_boolean('persist-pinned') || pinned.length === 0) {
-                this._deleteFile();
-                return;
-            }
-            ensureDirectory(this._file.get_parent());
-            const json = JSON.stringify(pinned.map(i => this._toRecord(i)));
-            this._file.replace_contents(new TextEncoder().encode(json), null, false,
-                Gio.FileCreateFlags.PRIVATE | Gio.FileCreateFlags.REPLACE_DESTINATION, null);
-        } catch (e) {
-            console.error(`Super V Clipboard: cannot save pinned items: ${e.message}`);
-        }
-    }
-
-    _deleteFile() {
-        try {
-            this._file.delete(null);
-        } catch (e) {
-            if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND))
-                throw e;
-        }
+        const persist = this._settings.get_boolean('persist-pinned');
+        // Records are built only when the debounced write runs.
+        this._store.save(() => persist
+            ? this._items.filter(i => i.pinned).map(i => this._toRecord(i))
+            : []);
     }
 }
 
 function imageKey(bytes) {
     return `i:${GLib.compute_checksum_for_bytes(GLib.ChecksumType.SHA256, bytes)}`;
-}
-
-function ensureDirectory(dir) {
-    try {
-        dir.make_directory_with_parents(null);
-    } catch (e) {
-        if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.EXISTS))
-            throw e;
-    }
 }

@@ -15,12 +15,6 @@ cp "$SRC"/schemas/*.gschema.xml "$DEST/schemas/"
 glib-compile-schemas "$DEST/schemas"
 echo "Installed to $DEST"
 
-# GNOME binds Super+V to the notification list by default; keep Super+M for it.
-current="$(gsettings get org.gnome.shell.keybindings toggle-message-tray)"
-if [[ "$current" == *"<Super>v"* ]]; then
-    gsettings set org.gnome.shell.keybindings toggle-message-tray "['<Super>m']"
-    echo "Moved GNOME's notification list shortcut to Super+M (Super+V is now the clipboard)."
-fi
 
 enabled="$(gsettings get org.gnome.shell enabled-extensions)"
 if [[ "$enabled" != *"$UUID"* ]]; then

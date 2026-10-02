@@ -16,7 +16,7 @@ export default class SuperVClipboardExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._history = new History(this._settings);
-        this._history.load();
+        this._history.load().catch(e => logError(e, 'Super V Clipboard: loading pinned items failed'));
         this._paster = new Paster();
 
         this._popup = new ClipboardPopup({
@@ -34,7 +34,10 @@ export default class SuperVClipboardExtension extends Extension {
         const unlocked = () => !Main.sessionMode.isLocked;
         this._monitor = new ClipboardMonitor({
             onText: text => unlocked() && this._history.addText(text),
-            onImage: (bytes, mime) => unlocked() && this._history.addImage(bytes, mime),
+            onImage: (bytes, mime) => {
+                if (unlocked())
+                    this._history.addImage(bytes, mime).catch(e => logError(e, 'Super V Clipboard: adding image failed'));
+            },
             wantImages: () => this._settings.get_boolean('store-images'),
         });
         this._monitor.start();
@@ -55,6 +58,10 @@ export default class SuperVClipboardExtension extends Extension {
         });
     }
 
+    // This extension also runs in the 'unlock-dialog' session mode so the
+    // in-memory history survives locking the screen. While locked, the shortcut
+    // is inactive (NORMAL/OVERVIEW action modes only), the panel is closed, and
+    // nothing is recorded. disable() still runs on logout or when turned off.
     disable() {
         GLib.source_remove(this._pruneId);
         Main.wm.removeKeybinding('toggle-shortcut');

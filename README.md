@@ -42,7 +42,7 @@ cd superv-clipboard
 
 Then **log out and log back in**. On Wayland, GNOME Shell can't load a new extension until you do. Press <kbd>Super</kbd>+<kbd>V</kbd> and you're set.
 
-> **Note:** GNOME uses <kbd>Super</kbd>+<kbd>V</kbd> for the notification list by default. The installer moves that to <kbd>Super</kbd>+<kbd>M</kbd>, which already works for the same thing.
+> **Note:** Super+V takes priority over GNOME's own Super+V shortcut for the notification list. You can still open notifications with <kbd>Super</kbd>+<kbd>M</kbd>.
 
 ## Usage
 
@@ -90,19 +90,20 @@ On Wayland, normal apps aren't allowed to read the clipboard in the background, 
 ./uninstall.sh
 ```
 
-This removes the extension, gives <kbd>Super</kbd>+<kbd>V</kbd> back to GNOME, and asks whether to delete your saved pinned items.
+This removes the extension and asks whether to delete your saved pinned items.
 
 ## Development
 
 ```
 extension/
 ├── extension.js   # wiring: shortcut, timers, lifecycle
-├── history.js     # history list, expiry, pinning, saving pinned items
+├── history.js     # history list, expiry, pinning
+├── storage.js     # saves/loads pinned items in the background
 ├── monitor.js     # watches the clipboard
 ├── paster.js      # puts an item on the clipboard and sends the paste keys
 ├── popup.js       # the Super+V panel
 ├── format.js      # previews and "5 min ago" labels
-├── thumbnail.js   # decodes image previews on the main thread
+├── thumbnail.js   # decodes image previews in the background
 ├── prefs.js       # settings window (libadwaita)
 ├── stylesheet.css
 └── schemas/
