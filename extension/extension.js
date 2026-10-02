@@ -58,11 +58,12 @@ export default class SuperVClipboardExtension extends Extension {
         });
     }
 
-    // This extension also runs in the 'unlock-dialog' session mode so the
-    // in-memory history survives locking the screen. While locked, the shortcut
-    // is inactive (NORMAL/OVERVIEW action modes only), the panel is closed, and
-    // nothing is recorded. disable() still runs on logout or when turned off.
     disable() {
+        // This extension uses the 'unlock-dialog' session mode so the in-memory
+        // clipboard history survives locking the screen. While locked, the
+        // shortcut is inactive (NORMAL/OVERVIEW action modes only), the panel
+        // is closed, and nothing is recorded. disable() still runs on logout
+        // or when the extension is turned off.
         GLib.source_remove(this._pruneId);
         Main.wm.removeKeybinding('toggle-shortcut');
         Main.sessionMode.disconnect(this._sessionId);

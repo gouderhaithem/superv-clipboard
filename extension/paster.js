@@ -35,7 +35,6 @@ export class Paster {
 
     destroy() {
         this._cancel();
-        this._keyboard?.run_dispose();
         this._keyboard = null;
     }
 
