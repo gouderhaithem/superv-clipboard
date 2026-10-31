@@ -35,7 +35,13 @@ export default class SuperVClipboardPrefs extends ExtensionPreferences {
         });
         settings.bind('persist-pinned', persist, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        [expiry, maxItems, images, persist].forEach(row => group.add(row));
+        const imagePath = new Adw.SwitchRow({
+            title: 'Paste images into terminals as a file path',
+            subtitle: 'For CLI tools like Claude Code. Saved to ~/.cache/superv-clipboard/images, deleted after a day',
+        });
+        settings.bind('paste-images-as-path', imagePath, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        [expiry, maxItems, images, imagePath, persist].forEach(row => group.add(row));
         page.add(group);
         window.add(page);
     }

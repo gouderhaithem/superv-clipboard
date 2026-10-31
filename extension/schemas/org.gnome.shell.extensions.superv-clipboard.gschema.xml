@@ -24,5 +24,10 @@
       <default>true</default>
       <summary>Save pinned items to disk so they survive a reboot</summary>
     </key>
+    <key name="paste-images-as-path" type="b">
+      <default>true</default>
+      <summary>Paste images into terminals as a file path</summary>
+      <description>The image is saved to ~/.cache/superv-clipboard/images and its path is pasted, so CLI tools such as Claude Code can attach it. Saved images are deleted after a day.</description>
+    </key>
   </schema>
 </schemalist>

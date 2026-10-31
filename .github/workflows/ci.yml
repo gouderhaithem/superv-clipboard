@@ -16,4 +16,6 @@ jobs:
       - name: Syntax check
         run: for f in extension/*.js; do node --check --input-type=module < "$f"; done
       - name: Unit tests
-        run: gjs -m tests/history.test.js
+        run: |
+          gjs -m tests/history.test.js
+          gjs -m tests/imagefile.test.js

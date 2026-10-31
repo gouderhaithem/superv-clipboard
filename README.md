@@ -24,6 +24,7 @@ Copied items delete themselves after a time you choose, so passwords and other s
 - **Auto-delete timer**: unpinned items are removed after 30 minutes by default. Each item shows how long it has left.
 - **Pin** 📌 the things you paste all the time. Pinned items never expire and survive a reboot.
 - **Text and images**: copied screenshots and pictures show up as previews.
+- **Images in the terminal as a file path**: pick an image while a terminal is focused and its file path is pasted instead, so CLI tools like [Claude Code](https://claude.com/claude-code) attach it as an image. The file is saved privately in `~/.cache/superv-clipboard/images` and deleted after a day. You can turn this off in Settings.
 - **Skips passwords**: anything a password manager (KeePassXC and others) marks as secret is never recorded. Nothing is recorded while the screen is locked.
 - **Keyboard first**: <kbd>↑</kbd> <kbd>↓</kbd> to move, <kbd>Enter</kbd> to paste, <kbd>Del</kbd> to remove, <kbd>Esc</kbd> to close.
 - **Light on resources**: no background process and no extra runtime. It runs inside GNOME Shell and only wakes up when you copy something.
@@ -67,6 +68,7 @@ Open them from the ⚙ button in the panel, or run `gnome-extensions prefs super
 | Delete items after (minutes, `0` = never) | 30 |
 | Maximum items | 25 |
 | Keep copied images | On |
+| Paste images into terminals as a file path | On |
 | Keep pinned items after reboot | On |
 
 To change the shortcut:
@@ -79,6 +81,7 @@ gsettings --schemadir ~/.local/share/gnome-shell/extensions/superv-clipboard@gou
 ## Privacy
 
 - Your history is kept **in memory only** and never leaves your computer.
+- Images you paste into a terminal as a path are saved to `~/.cache/superv-clipboard/images` (readable only by you) and deleted after a day.
 - Only **pinned** items are written to disk, in `~/.local/share/superv-clipboard/pinned.json`, which only your user can read. Turn off *Keep pinned items after reboot* to keep pinned items in memory too.
 - Password-manager copies are ignored, and nothing is recorded while the screen is locked.
 
@@ -103,6 +106,7 @@ extension/
 ├── storage.js     # saves/loads pinned items in the background
 ├── monitor.js     # watches the clipboard
 ├── paster.js      # puts an item on the clipboard and sends the paste keys
+├── imagefile.js   # saves images to files so terminals get a path
 ├── popup.js       # the Super+V panel
 ├── format.js      # previews and "5 min ago" labels
 ├── thumbnail.js   # decodes image previews in the background
@@ -115,6 +119,7 @@ Run the tests:
 
 ```bash
 gjs -m tests/history.test.js                   # unit tests (history, expiry, thumbnails)
+gjs -m tests/imagefile.test.js                 # unit tests (images saved for pasting as a path)
 dbus-run-session -- tests/shell-smoke.sh       # loads the extension in a throwaway headless GNOME Shell
 ```
 
